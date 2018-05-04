@@ -37,14 +37,14 @@ public class Gaia {
 			String[] str = sb.toString().split("<a href=\"", 0);
 			int len = str.length;
 			int i = 0;
-			Pattern p = Pattern.compile(".*.csv.gz");
+			Pattern p = Pattern.compile(".*.csv.gz\"");
 			List<String> list = new ArrayList<String>();
 			File file = null;
 
 			for (i = 0; i < len; i++) {
 				Matcher m = p.matcher(str[i]);
 				while (m.find()) {
-					list.add(m.group());
+					list.add(m.group().replace("\"", ""));
 				}
 			}
 
@@ -72,7 +72,7 @@ public class Gaia {
 		HttpURLConnection con = null;
 
 		try {
-			Thread.sleep(5000);
+			Thread.sleep(3000);
 			URL url = new URL(url_str);
 			con = (HttpURLConnection) url.openConnection();
 			con.setRequestMethod("GET");
