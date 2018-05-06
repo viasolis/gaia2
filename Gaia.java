@@ -40,7 +40,7 @@ public class Gaia {
 	private static final String TEMP_FILE_PATH = TEMP_DIR_PATH + "temp.gz";
 
 	public Gaia() {
-		step4();
+		step3();
 	}
 
 	public void step1() {
@@ -181,6 +181,89 @@ public class Gaia {
 		File[] list = new File(TEMP_DIR_PATH).listFiles();
 
 		if (list != null) {
+			int i, m, len = list.length;
+			double ra, ra_max, ra_min, dec, dec_max, dec_min, mag, mag_max, mag_min;
+			PrintWriter pw = null;
+
+			try {
+				pw = new PrintWriter(new BufferedWriter(new FileWriter(new File("d:\\homepage\\astro.starfree.jp\\gaia\\table.txt"))));
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+
+			java.util.Arrays.sort(list, new java.util.Comparator<File>() {
+				public int compare(File file1, File file2) {
+					return file1.getName().compareTo(file2.getName());
+				}
+			});
+
+			for (i = 0; i < len; i++) {
+				if (list[i].isFile()) {
+					try {
+						String line = list[i].toString();
+						File file = new File(line);
+						BufferedReader br = new BufferedReader(new FileReader(file));
+						String name = line.replace(TEMP_DIR_PATH + "GaiaSource_", "");
+						name = name.replace(".csv", "");
+						String[] data = null;
+						m = 0;
+						ra_max = -1;
+						ra_min = 400;
+						dec_max = -100;
+						dec_min = 100;
+						mag_max = -100;
+						mag_min = 100;
+
+						while ((line = br.readLine()) != null) {
+							m++;
+							data = line.split(",", 0);
+							ra = Double.parseDouble(data[1] + "." + data[2]);
+							dec = Double.parseDouble(data[3] + "." + data[4]);
+							mag = Double.parseDouble(data[5] + "." + data[6]);
+
+							if (ra > ra_max) {
+								ra_max = ra;
+							} else if (ra < ra_min) {
+								ra_min = ra;
+							}
+
+							if (dec > dec_max) {
+								dec_max = dec;
+							} else if (dec < dec_min) {
+								dec_min = dec;
+							}
+
+							if (mag > mag_max) {
+								mag_max = mag;
+							} else if (mag < mag_min) {
+								mag_min = mag;
+							}
+						}
+
+						br.close();
+						pw.println(name + "," + String.format("%.12f", ra_min / 15.0) + "," + String.format("%.12f", ra_max / 15.0) + ","
+								+ String.format("%.12f", dec_min) + "," + String.format("%.12f", dec_max) + "," + String.format("%.6f", mag_min) + "," + String.format("%.6f", mag_max) + "," + m);
+					} catch (FileNotFoundException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+
+					System.out.println(i);
+				}
+			}
+
+			pw.close();
+
+		} else {
+			System.out.println("NG:File not found.");
+		}
+	}
+
+	public void step4() {
+		File[] list = new File(TEMP_DIR_PATH).listFiles();
+
+		if (list != null) {
 			int i, j, ra, dec, len = list.length;
 			PrintWriter pw = null;
 			int map[][] = new int[182][361];
@@ -252,7 +335,7 @@ public class Gaia {
 		}
 	}
 
-	public void step4() {
+	public void step5() {
 		int i = 0, j;
 		int map[][] = new int[181][360];
 		String line = null;
