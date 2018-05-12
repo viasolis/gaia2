@@ -1,5 +1,6 @@
 # gaia2
 ## 桁数
+ID:31  
 RA_min:4  
 RA_max:19  
 Dec_min:6  
