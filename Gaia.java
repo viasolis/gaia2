@@ -26,6 +26,7 @@ import java.net.ProtocolException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -41,7 +42,7 @@ public class Gaia {
 	private Color[] color = { new Color(0, 0, 0), new Color(32, 32, 32), new Color(64, 64, 64), new Color(96, 96, 96), new Color(128, 128, 128), new Color(160, 160, 160), new Color(192, 192, 192), new Color(224, 224, 224), new Color(255, 255, 255) };
 
 	public Gaia() {
-		step10();
+		step9();
 	}
 
 	public void step1() {
@@ -564,6 +565,129 @@ public class Gaia {
 		File[] list = new File(TEMP_DIR_PATH).listFiles();
 
 		if (list != null) {
+			int i, j, ra_i, ra_f, dec_i, dec_f, mag, len = list.length;
+			double ra, dec;
+			String line;
+			String[] data;
+			BufferedReader br = null;
+			BufferedOutputStream[][] bos = new BufferedOutputStream[180][360];
+
+			for (i = 0; i < 90; i++) {
+				for (j = 0; j < 360; j++) {
+					bos[89 - i][j] = openBOS("-" + i + "_" + j);
+					bos[i + 90][j] = openBOS("+" + i + "_" + j);
+				}
+			}
+
+			for (i = 0; i < len; i++) {
+				if (list[i].isFile()) {
+					try {
+						br = new BufferedReader(new FileReader(new File(list[i].toString())));
+
+						while ((line = br.readLine()) != null) {
+							data = line.split(",", 0);
+							ra = Double.parseDouble(data[1] + "." + data[2]);
+							ra_f = Integer.parseInt(String.format("%.9f", ra).split("\\.")[1]);
+							ra_i = Integer.parseInt(data[1]);
+							dec = Double.parseDouble(data[3] + "." + data[4]);
+							dec_f = Integer.parseInt(String.format("%.9f", dec).split("\\.")[1]);
+
+							if ("-0".equals(data[3])) {
+								dec_i = 89;
+							} else {
+								dec_i = Integer.parseInt(data[3]);
+
+								if (dec_i < 0) {
+									dec_i += 89;
+								} else {
+									dec_i += 90;
+								}
+							}
+
+							mag = Integer.parseInt(data[5]) - 1;
+							if (mag > 15) {
+								mag = 15;
+							}
+							writeBOS(encode8B(ra_f, dec_f, mag), bos[dec_i][ra_i]);
+						}
+
+						br.close();
+					} catch (FileNotFoundException e) {
+						e.printStackTrace();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+
+					System.out.println(i);
+				}
+			}
+
+			for (i = 0; i < 180; i++) {
+				for (j = 0; j < 360; j++) {
+					closeBOS(bos[i][j]);
+					System.out.println("close:" + i + "," + j);
+				}
+			}
+		} else {
+			System.out.println("NG:File not found.");
+		}
+	}
+
+	public void step10() {
+		BufferedInputStream fis = null;
+		int nbyte = 12;
+		int i, j, k, l, len;
+		byte[] rows = null;
+		byte[] row = new byte[nbyte];
+		int[] res = null;
+		HashMap<String, Boolean> flag = null;
+		String key = "";
+
+		for (i = 89; i >= 0; i--) {
+			for (j = 0; j < 360; j++) {
+				try {
+					File file = new File("d:\\gdr2bit\\" + "-" + i + "_" + j + ".dat");
+					fis = new BufferedInputStream(new FileInputStream(file));
+					rows = new byte[fis.available()];
+					fis.read(rows);
+				} catch (IOException e) {
+					e.printStackTrace();
+				} finally {
+					try {
+						if (fis != null) {
+							fis.close();
+						}
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+
+				len = rows.length / nbyte;
+				flag = new HashMap<String, Boolean>();
+
+				for (k = 0; k < len; k++) {
+					row = new byte[nbyte];
+					for (l = 0; l < nbyte; l++) {
+						row[l] = rows[k * nbyte + l];
+					}
+					res = decode12B(row);
+					key = String.format("%09d", res[1]).substring(0, 6) + "," + String.format("%09d", res[2]).substring(0, 6);
+					if (flag.get(key) == null) {
+						flag.put(key, true);
+					} else {
+						System.out.println("ng," + i + "," + j + "," + key);
+						break;
+					}
+				}
+			}
+			System.out.println(i);
+		}
+	}
+
+	public void step11() {
+		File[] list = new File(TEMP_DIR_PATH).listFiles();
+
+		if (list != null) {
 			int i, j, id, ra_i, ra_f, dec_i, dec_f, mag, len = list.length;
 			double ra, dec;
 			String line;
@@ -587,10 +711,10 @@ public class Gaia {
 							data = line.split(",", 0);
 							id = Integer.parseInt(data[0]);
 							ra = Double.parseDouble(data[1] + "." + data[2]);
-							ra_f = Integer.parseInt(String.format("%.9f", ra).split("\\.")[1]);
+							ra_f = Integer.parseInt(String.format("%.6f", ra).split("\\.")[1]);
 							ra_i = Integer.parseInt(data[1]);
 							dec = Double.parseDouble(data[3] + "." + data[4]);
-							dec_f = Integer.parseInt(String.format("%.9f", dec).split("\\.")[1]);
+							dec_f = Integer.parseInt(String.format("%.6f", dec).split("\\.")[1]);
 
 							if ("-0".equals(data[3])) {
 								dec_i = 89;
@@ -627,41 +751,6 @@ public class Gaia {
 			}
 		} else {
 			System.out.println("NG:File not found.");
-		}
-	}
-
-	public void step10() {
-		BufferedInputStream fis = null;
-		byte[] data = null;
-		int nbyte = 12;
-		int i, j;
-
-		for (i = 89; i >= 0; i--) {
-			for (j = 0; j < 360; j++) {
-				try {
-					File file = new File("d:\\gdr2bit\\" + "-" + i + "_" + j + ".dat");
-					fis = new BufferedInputStream(new FileInputStream(file));
-					int avail = fis.available();
-					byte[] bytes = new byte[avail];
-					fis.read(bytes);
-					data = bytes;
-				} catch (IOException e) {
-					e.printStackTrace();
-				} finally {
-					try {
-						if (fis != null) {
-							fis.close();
-						}
-
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
-				}
-
-				int len = data.length / nbyte;
-				System.out.print(len + ",");
-			}
-			System.out.println("");
 		}
 	}
 
@@ -857,6 +946,25 @@ public class Gaia {
 		}
 	}
 
+	private byte[] encode8B(int ra, int dec, int mag) {
+		byte[] ret = new byte[8];
+		int a = 0;
+		int b = 0;
+		ret[0] = (byte) ((ra >>> 22) & 0x00ff);
+		ret[1] = (byte) ((ra >>> 14) & 0x00ff);
+		ret[2] = (byte) ((ra >>> 6) & 0x00ff);
+		a = (ra << 2) & 0x00fc;
+		b = (dec >>> 28) & 0x0003;
+		ret[3] = (byte) ((a | b) & 0x00ff);
+		ret[4] = (byte) ((dec >>> 20) & 0x00ff);
+		ret[5] = (byte) ((dec >>> 12) & 0x00ff);
+		ret[6] = (byte) ((dec >>> 4) & 0x00ff);
+		a = (dec << 4) & 0x00f0;
+		b = mag & 0x000f;
+		ret[7] = (byte) ((a | b) & 0x00ff);
+		return ret;
+	}
+
 	private byte[] encode12B(int id, int ra, int dec, int mag) {
 		byte[] ret = new byte[12];
 		int a = 0;
@@ -881,18 +989,21 @@ public class Gaia {
 		ret[11] = (byte) ((a | b) & 0x00ff);
 		return ret;
 	}
-
-	public void decode12B(byte[] data) {
-		StringBuffer sb = new StringBuffer();
-		int buffer = 0;
-		buffer = (data[0] << 23) & 0x7f800000 | ((data[1] << 15) & 0x007f8000) | ((data[2] << 7) & 0x00007f80) | ((data[3] >>> 1) & 0x0000007f);
-		sb.append(buffer + ",");
-		buffer = (data[3] << 29) & 0x20000000 | ((data[4] << 21) & 0x1fe00000) | ((data[5] << 13) & 0x001fe000) | ((data[6] << 5) & 0x00001fe0) | ((data[7] >>> 3) & 0x0000001f);
-		sb.append(buffer + ",");
-		buffer = (data[7] << 27) & 0x38000000 | ((data[8] << 19) & 0x07f80000) | ((data[9] << 11) & 0x0007f800) | ((data[10] << 3) & 0x000007f8) | ((data[11] >>> 5) & 0x00000007);
-		sb.append(buffer + ",");
-		buffer = data[11] & 0x0000001f;
-		sb.append(buffer);
-		System.out.println(sb.toString());
+	
+	public int[] decode8B(byte[] data) {
+		int[] ret = new int[3];
+		ret[0] = ((data[0] << 22) & 0x3fc00000) | ((data[1] << 14) & 0x003fc000) | ((data[2] << 6) & 0x00003fc0) | ((data[3] >>> 2) & 0x0000003f);
+		ret[1] = (data[3] << 28) & 0x30000000 | ((data[4] << 20) & 0x0ff00000) | ((data[5] << 12) & 0x000ff000) | ((data[6] << 4) & 0x00000ff0) | ((data[7] >>> 4) & 0x0000000f);
+		ret[2] = data[7] & 0x0000000f;
+		return ret;
+	}
+	
+	public int[] decode12B(byte[] data) {
+		int[] ret = new int[4];
+		ret[0] = (data[0] << 23) & 0x7f800000 | ((data[1] << 15) & 0x007f8000) | ((data[2] << 7) & 0x00007f80) | ((data[3] >>> 1) & 0x0000007f);
+		ret[1] = (data[3] << 29) & 0x20000000 | ((data[4] << 21) & 0x1fe00000) | ((data[5] << 13) & 0x001fe000) | ((data[6] << 5) & 0x00001fe0) | ((data[7] >>> 3) & 0x0000001f);
+		ret[2] = (data[7] << 27) & 0x38000000 | ((data[8] << 19) & 0x07f80000) | ((data[9] << 11) & 0x0007f800) | ((data[10] << 3) & 0x000007f8) | ((data[11] >>> 5) & 0x00000007);
+		ret[3] = data[11] & 0x0000001f;
+		return ret;
 	}
 }
