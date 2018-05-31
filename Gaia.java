@@ -2,7 +2,9 @@ package gaia;
 
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -46,7 +48,7 @@ public class Gaia {
 			new Color(36, 36, 36), new Color(32, 32, 32), new Color(28, 28, 28), new Color(24, 24, 24), new Color(20, 20, 20), new Color(16, 16, 16) };
 
 	public Gaia() {
-		step18();
+		step20();
 	}
 
 	public void step1() {
@@ -1250,9 +1252,9 @@ public class Gaia {
 		int i, j, k, l, len;
 		String line;
 		String[] data;
-		ArrayList<Integer> sx = new ArrayList<Integer>();
-		ArrayList<Integer> sy = new ArrayList<Integer>();
-		ArrayList<String> s = new ArrayList<String>();
+		ArrayList<Double> sr = new ArrayList<Double>();
+		ArrayList<Double> sd = new ArrayList<Double>();
+		ArrayList<String> ss = new ArrayList<String>();
 		ArrayList<Integer> x = new ArrayList<Integer>();
 		ArrayList<Integer> y = new ArrayList<Integer>();
 		ArrayList<Integer> m = new ArrayList<Integer>();
@@ -1267,48 +1269,244 @@ public class Gaia {
 			br.readLine();
 			while ((line = br.readLine()) != null) {
 				data = line.split(",", 0);
-				x.add((int) ((360.0f - Float.parseFloat(data[1])) * 10.0f));
-				y.add((int) ((180.0f - (Float.parseFloat(data[2]) + 90.0f)) * 10.0f));
-				s.add(data[3]);
+				sr.add(Double.parseDouble(data[1]));
+				sd.add(Double.parseDouble(data[2]));
+				ss.add(data[4]);
 			}
 			br.close();
-			i = 89;
-			j = 0;
 
-			File file = new File("d:\\gdr2bit\\+" + i + "_" + j + ".dat");
-			fis = new BufferedInputStream(new FileInputStream(file));
-			rows = new byte[fis.available()];
-			fis.read(rows);
-			fis.close();
+			for (i = 0; i < 90; i++) {
+				for (j = 0; j < 360; j++) {
+					File file = new File("d:\\gdr2bit\\+" + i + "_" + j + ".dat");
+					fis = new BufferedInputStream(new FileInputStream(file));
+					rows = new byte[fis.available()];
+					fis.read(rows);
+					fis.close();
+					len = rows.length / nbyte;
+					x = new ArrayList<Integer>();
+					y = new ArrayList<Integer>();
+					m = new ArrayList<Integer>();
 
-			len = rows.length / nbyte;
+					for (k = 0; k < len; k++) {
+						row = new byte[nbyte];
+						for (l = 0; l < nbyte; l++) {
+							row[l] = rows[k * nbyte + l];
+						}
+						res = decode8B(row);
+						x.add((int) ((1000000000 - res[0]) / 1000000.0));
+						y.add((int) ((1000000000 - res[1]) / 1000000.0));
+						m.add(res[2]);
+					}
 
-			for (k = 0; k < len; k++) {
-				row = new byte[nbyte];
-				for (l = 0; l < nbyte; l++) {
-					row[l] = rows[k * nbyte + l];
+					BufferedImage bi = new BufferedImage(1000, 1000, BufferedImage.TYPE_INT_RGB);
+					Graphics2D g = bi.createGraphics();
+					g.setColor(Color.WHITE);
+					g.fillRect(0, 0, 1000, 1000);
+					g.setColor(Color.LIGHT_GRAY);
+					len = x.size();
+
+					for (k = 0; k < len; k++) {
+						fill_star(x.get(k), y.get(k), m.get(k), g);
+					}
+
+					g.setColor(Color.BLACK);
+					len = x.size();
+
+					for (k = 0; k < len; k++) {
+						draw_star(x.get(k), y.get(k), g);
+					}
+
+					g.setColor(Color.DARK_GRAY);
+					g.setFont(new Font("Arial", Font.PLAIN, 12));
+					len = ss.size();
+
+					for (k = 0; k < len; k++) {
+						if (j <= sr.get(k) && sr.get(k) <= j + 1 && i <= sd.get(k) && sd.get(k) <= i + 1) {
+							g.drawString(ss.get(k), (int) ((1000000000.0 - (sr.get(k) - j) * 1000000000.0) / 1000000.0), (int) ((1000000000.0 - (sd.get(k) - i) * 1000000000.0) / 1000000.0));
+						}
+					}
+
+					try {
+						ImageIO.write(bi, "png", new File("d:\\gdr2img\\+" + i + "_" + j + ".png"));
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+
+					System.out.println(j + "," + i);
 				}
-				res = decode8B(row);
-				x.add((100000000 - res[0]) / 100000);
-				y.add((100000000 - res[1]) / 100000);
+			}
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (NumberFormatException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void step20() {
+		int a, b, c, d, i, j, k, l, m, s, x, y, w = 3840, h = 2160;
+		String line, str;
+		String[] data;
+		ArrayList<Integer> sx = null;
+		ArrayList<Integer> sy = null;
+		ArrayList<Rectangle> rs = null;
+		ArrayList<Boolean> sb = null;
+		ArrayList<Double> sr = new ArrayList<Double>();
+		ArrayList<Double> sd = new ArrayList<Double>();
+		ArrayList<String> ss = null;
+		ArrayList<String> sss = new ArrayList<String>();
+		BufferedInputStream fis = null;
+		BufferedReader br = null;
+		int nbyte = 8;
+		byte[] rows = null;
+		byte[] row = new byte[nbyte];
+		int[] res = null;
+		boolean label_flag = false;
+
+		try {
+			if (label_flag) {
+				br = new BufferedReader(new FileReader(new File("d:\\name.csv")));
+				br.readLine();
+
+				while ((line = br.readLine()) != null) {
+					data = line.split(",", 0);
+					sr.add(Double.parseDouble(data[1]));
+					sd.add(Double.parseDouble(data[2]));
+					sss.add(data[4]);
+				}
+
+				br.close();
+				br = new BufferedReader(new FileReader(new File("d:\\ni.csv")));
+				br.readLine();
+
+				while ((line = br.readLine()) != null) {
+					data = line.split(",", 0);
+					sr.add(Double.parseDouble(data[0]));
+					sd.add(Double.parseDouble(data[1]));
+					str = "";
+					if ("N".equals(data[2])) {
+						str = "NGC";
+					} else if ("I".equals(data[2])) {
+						str = "IC";
+					} else {
+						str = "";
+					}
+					str = str + data[3];
+					if (data.length > 4) {
+						if (!"".equals(data[4])) {
+							str = str + "(" + data[4] + ")";
+						}
+					}
+					sss.add(str);
+				}
+
+				br.close();
 			}
 
-			len = x.size();
-			BufferedImage bi = new BufferedImage(1000, 1000, BufferedImage.TYPE_INT_RGB);
-			Graphics2D g = bi.createGraphics();
-			g.setColor(Color.WHITE);
-			g.fillRect(0, 0, 1000, 1000);
-			g.setColor(Color.BLACK);
-			g.setFont(new Font("Arial", Font.PLAIN, 12));
+			for (i = 0; i < 216; i++) {
+				BufferedImage bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+				Graphics2D g = bi.createGraphics();
+				//g.setColor(Color.WHITE);
+				g.setColor(Color.BLACK);
+				g.fillRect(0, 0, w, h);
+				//g.setColor(Color.LIGHT_GRAY);
+				g.setColor(Color.DARK_GRAY);
+				a = i / 24 * 10;
+				b = a + 10;
+				c = i % 24 * 15;
+				d = c + 15;
+				sx = new ArrayList<Integer>();
+				sy = new ArrayList<Integer>();
 
-			for (i = 0; i < len; i++) {
-				g.drawString(s.get(i), x.get(i), y.get(i));
-			}
+				for (j = a; j < b; j++) {
+					for (k = c; k < d; k++) {
+						File file = new File("d:\\gdr2bit\\-" + j + "_" + k + ".dat");
+						fis = new BufferedInputStream(new FileInputStream(file));
+						rows = new byte[fis.available()];
+						fis.read(rows);
+						fis.close();
+						s = rows.length / nbyte;
 
-			try {
-				ImageIO.write(bi, "png", new File("d:\\+" + i + "_" + j + ".png"));
-			} catch (Exception e) {
-				e.printStackTrace();
+						for (l = 0; l < s; l++) {
+							row = new byte[nbyte];
+							for (m = 0; m < nbyte; m++) {
+								row[m] = rows[l * nbyte + m];
+							}
+							res = decode8B(row);
+							x = (int) ((1.0 - (k + res[0] / 1000000000.0 - c) / 15.0) * w);
+							y = (int) (((j + res[1] / 1000000000.0 - a) / 10.0) * h);
+							if (res[2] == 15) {
+								g.fillRect(x, y, 1, 1);
+							} else {
+								sx.add(x);
+								sy.add(y);
+							}
+						}
+					}
+				}
+
+				s = sx.size();
+				//g.setColor(Color.BLACK);
+				g.setColor(Color.WHITE);
+
+				for (j = 0; j < s; j++) {
+					g.fillRect(sx.get(j), sy.get(j), 1, 1);
+				}
+
+				if (label_flag) {
+					g.setFont(new Font("Arial", Font.PLAIN, 9));
+					FontMetrics fm = g.getFontMetrics();
+					Rectangle rect = null;
+					s = sss.size();
+					rs = new ArrayList<Rectangle>();
+					ss = new ArrayList<String>();
+					sb = new ArrayList<Boolean>();
+
+					for (j = 0; j < s; j++) {
+						if (c <= sr.get(j) && sr.get(j) <= d && a <= sd.get(j) && sd.get(j) <= b) {
+							x = (int) ((1.0 - (sr.get(j) - c) / 15.0) * w);
+							y = (int) ((1.0 - (sd.get(j) - a) / 10.0) * h);
+							rect = fm.getStringBounds(sss.get(j), g).getBounds();
+							rect.setLocation(x - (int) (rect.getWidth() / 2.0), y + 6);
+							rs.add(rect);
+							ss.add(sss.get(j));
+							sb.add(true);
+						}
+					}
+
+					s = ss.size();
+
+					if (s > 0) {
+						g.setColor(Color.RED);
+						if (s > 1) {
+							for (j = 0; j < s; j++) {
+								for (k = j; k < s; k++) {
+									if (j != k && rs.get(j).intersects(rs.get(k))) {
+										sb.set(k, false);
+									}
+								}
+							}
+							for (j = 0; j < s; j++) {
+								if (sb.get(j)) {
+									g.drawString(ss.get(j), rs.get(j).x, rs.get(j).y);
+								}
+							}
+						} else {
+							g.drawString(ss.get(0), rs.get(0).x, rs.get(0).y);
+						}
+					}
+				}
+
+				line = "d:\\gdr2img\\-" + a + "-" + b + "_" + c + "-" + d + ".png";
+
+				try {
+					ImageIO.write(bi, "png", new File(line));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+
+				System.out.println(line);
 			}
 		} catch (FileNotFoundException e) {
 			e.printStackTrace();
